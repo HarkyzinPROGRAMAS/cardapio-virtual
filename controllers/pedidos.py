@@ -1,3 +1,7 @@
+import base64
+import io
+import qrcode
+
 from flask import Blueprint, jsonify, request, render_template
 
 from services.pedido_service import (
@@ -14,6 +18,32 @@ pedidos_bp = Blueprint("pedidos", __name__)
 @equipe_required
 def painel_pedidos():
     return render_template("pedidos.html")
+
+@pedidos_bp.route("/qr-codes", methods=["GET"])
+@equipe_required
+def pagina_qr_codes():
+    mesas = []
+    base_url = request.host_url.rstrip("/")
+
+    for numero in range(1, 11):
+        url_cardapio = f"{base_url}/?mesa={numero}"
+
+        imagem = qrcode.make(url_cardapio)
+
+        buffer = io.BytesIO()
+        imagem.save(buffer, format="PNG")
+
+        imagem_base64 = base64.b64encode(
+            buffer.getvalue()
+        ).decode("utf-8")
+
+        mesas.append({
+            "numero": numero,
+            "url": url_cardapio,
+            "imagem": imagem_base64
+        })
+
+    return render_template("qr_codes.html", mesas=mesas)
 
 @pedidos_bp.route("/pedidos", methods=["GET"])
 @equipe_required

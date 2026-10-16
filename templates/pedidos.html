@@ -95,6 +95,27 @@
             >
                 Atualizar pedidos
             </button>
+
+            <button
+                type="button"
+                class="botao-atualizar"
+                id="botao-sair"
+            >
+                Sair
+            </button>
+        </div>
+
+        <div class="filtro-pedidos">
+            <label for="filtro-status">Filtrar por status:</label>
+
+            <select id="filtro-status">
+                <option value="">Todos os pedidos</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Em preparo">Em preparo</option>
+                <option value="Pronto">Pronto</option>
+                <option value="Finalizado">Finalizado</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
         </div>
 
         <p id="mensagem" class="mensagem" role="status">
@@ -107,6 +128,8 @@
     <script>
         const listaPedidos = document.getElementById("lista-pedidos");
         const mensagem = document.getElementById("mensagem");
+        const filtroStatus = document.getElementById("filtro-status");
+
 
         const statusPermitidos = [
             "Pendente",
@@ -201,10 +224,64 @@
                         }`
                     )
                 );
+            
             } else {
                 card.appendChild(
                     criarElemento("p", "Pagamento ainda não registrado.")
                 );
+
+                const controlesPagamento = document.createElement("div");
+                controlesPagamento.className = "controles-pedido";
+
+                const seletorPagamento = document.createElement("select");
+                seletorPagamento.setAttribute(
+                    "aria-label",
+                    `Método de pagamento do pedido ${pedido.id}`
+                );
+
+                const opcaoInicial = document.createElement("option");
+                opcaoInicial.value = "";
+                opcaoInicial.textContent = "Selecione o pagamento";
+                opcaoInicial.disabled = true;
+                opcaoInicial.selected = true;
+
+                seletorPagamento.appendChild(opcaoInicial);
+
+                ["Pix", "Dinheiro", "Cartão"].forEach(metodo => {
+                    const opcao = document.createElement("option");
+                    opcao.value = metodo;
+                    opcao.textContent = metodo;
+                    seletorPagamento.appendChild(opcao);
+                });
+
+                const botaoPagamento = criarElemento(
+                    "button",
+                    "Registrar pagamento"
+                );
+
+                botaoPagamento.type = "button";
+
+                botaoPagamento.addEventListener("click", () => {
+                    const metodo = seletorPagamento.value;
+
+                    if (!metodo) {
+                        mensagem.textContent = "Selecione um método de pagamento.";
+                        return;
+                    }
+
+                    registrarPagamento(
+                        pedido.id,
+                        metodo,
+                        botaoPagamento
+                    );
+                });
+
+                controlesPagamento.append(
+                    seletorPagamento,
+                    botaoPagamento
+                );
+
+                card.appendChild(controlesPagamento);
             }
 
             const controles = document.createElement("div");
@@ -242,7 +319,10 @@
             listaPedidos.replaceChildren();
 
             try {
-                const resposta = await fetch("/pedidos");
+                const status = filtroStatus.value;
+                const resposta = await fetch(
+                    `/pedidos?status=${encodeURIComponent(status)}`
+                );
                 const pedidos = await resposta.json();
 
                 if (!resposta.ok) {
@@ -252,7 +332,10 @@
                 }
 
                 if (pedidos.length === 0) {
-                    mensagem.textContent = "Nenhum pedido recebido ainda.";
+                    mensagem.textContent = filtroStatus.value
+                        ? `Nenhum pedido encontrado com status "${filtroStatus.value}".`
+                        : "Nenhum pedido recebido ainda.";
+
                     return;
                 }
 
@@ -268,6 +351,45 @@
                     erro.message || "Erro ao carregar os pedidos.";
             }
         }
+
+        
+        async function registrarPagamento(id, metodo, botao) {
+            botao.disabled = true;
+            botao.textContent = "Registrando...";
+
+            try {
+                const resposta = await fetch(`/pedidos/${id}/pagamento`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        metodo: metodo
+                    })
+                });
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.erro || "Não foi possível registrar o pagamento."
+                    );
+                }
+
+                await carregarPedidos();
+
+                mensagem.textContent =
+                    `Pagamento do pedido #${id} registrado com sucesso!`;
+
+            } catch (erro) {
+                mensagem.textContent =
+                    erro.message || "Erro ao registrar o pagamento.";
+
+                botao.disabled = false;
+                botao.textContent = "Registrar pagamento";
+            }
+        }
+
 
         async function atualizarStatus(id, status, botao) {
             botao.disabled = true;
@@ -307,8 +429,39 @@
         document
             .getElementById("botao-atualizar")
             .addEventListener("click", carregarPedidos);
+            filtroStatus.addEventListener("change", carregarPedidos);
+
+        document
+        .getElementById("botao-sair")
+        .addEventListener("click", async () => {
+            mensagem.textContent = "Encerrando sessão...";
+
+            try {
+                const resposta = await fetch("/logout", {
+                    method: "POST"
+                });
+
+                if (!resposta.ok) {
+                    const erro = await resposta.text();
+
+                    mensagem.textContent =
+                        `Erro ao sair (${resposta.status}): ${erro}`;
+                    return;
+                }
+
+                window.location.assign("/login");
+
+            } catch (erro) {
+                mensagem.textContent =
+                    "Não foi possível conectar ao servidor para sair.";
+                console.error(erro);
+            }
+        });
 
         carregarPedidos();
+
+        setInterval(carregarPedidos, 30000);
+</script>
     </script>
 </body>
 </html>

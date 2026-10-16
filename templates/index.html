@@ -26,6 +26,10 @@
             <p>E MUITA ENERGIA!</p>
             <span>☕</span>
         </div>
+
+        <a href="/login" class="acesso-equipe">
+            Área da equipe
+        </a>
     </header>
 
     <main>
@@ -108,6 +112,7 @@
                         id="numero-mesa"
                         min="1"
                         placeholder="Ex.: 3"
+                        value="{{ request.args.get('mesa', '') }}"
                         required
                     >
 
@@ -118,7 +123,7 @@
                         placeholder="Digite seu telefone"
                     >
 
-                    <button type="submit">Enviar pedido</button>
+                    <button type="submit">Finalizar pedido</button>
                 </form>
 
                 <p id="mensagem-pedido" role="status"></p>
