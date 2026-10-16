@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Café do Garotinho</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5eee7;
+            color: #38271e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .caixa-login {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: min(350px, 85%);
+            box-shadow: 0 4px 15px #00000015;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+
+        input {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #68432f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #mensagem {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="caixa-login">
+        <h1>☕ Fazer login</h1>
+        <p>Gerenciamento do Café do Garotinho</p>
+
+        <form id="form-login">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" required>
+
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" required>
+
+            <button type="submit">Entrar</button>
+        </form>
+
+        <p id="mensagem" role="status"></p>
+    </main>
+
+    <script>
+        const formulario = document.getElementById("form-login");
+        const mensagem = document.getElementById("mensagem");
+
+        formulario.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+
+            mensagem.textContent = "Verificando login...";
+
+            const dados = {
+                email: document.getElementById("email").value.trim(),
+                senha: document.getElementById("senha").value
+            };
+
+            try {
+                const resposta = await fetch("/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    mensagem.textContent =
+                        resultado.erro || "Não foi possível entrar.";
+                    return;
+                }
+
+                window.location.href = "/painel-pedidos";
+
+            } catch (erro) {
+                mensagem.textContent =
+                    "Erro de conexão. Verifique se o Flask está funcionando.";
+            }
+        });
+    </script>
+</body>
+</html>

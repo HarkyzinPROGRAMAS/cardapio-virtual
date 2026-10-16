@@ -1,0 +1,314 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Pedidos - Café do Garotinho</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .painel-pedidos {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .cabecalho-pedidos {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .lista-pedidos {
+            display: grid;
+            gap: 20px;
+        }
+
+        .pedido-card {
+            background: white;
+            color: #33241d;
+            border: 1px solid #e4d6ca;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 10px #0000000d;
+        }
+
+        .pedido-card h2 {
+            margin-top: 0;
+        }
+
+        .pedido-card li {
+            margin: 8px 0;
+        }
+
+        .controles-pedido {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 16px;
+        }
+
+        .controles-pedido select,
+        .controles-pedido button,
+        .botao-atualizar {
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .botao-atualizar {
+            border: none;
+            background: #68432f;
+            color: white;
+        }
+
+        .mensagem {
+            margin: 15px 0;
+        }
+
+        .total-pedido {
+            font-size: 1.15rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="painel-pedidos">
+        <div class="cabecalho-pedidos">
+            <div>
+                <h1>☕ Gerenciamento de pedidos</h1>
+                <p>Café do Garotinho</p>
+            </div>
+
+            <button
+                type="button"
+                class="botao-atualizar"
+                id="botao-atualizar"
+            >
+                Atualizar pedidos
+            </button>
+        </div>
+
+        <p id="mensagem" class="mensagem" role="status">
+            Carregando pedidos...
+        </p>
+
+        <section id="lista-pedidos" class="lista-pedidos"></section>
+    </main>
+
+    <script>
+        const listaPedidos = document.getElementById("lista-pedidos");
+        const mensagem = document.getElementById("mensagem");
+
+        const statusPermitidos = [
+            "Pendente",
+            "Em preparo",
+            "Pronto",
+            "Finalizado",
+            "Cancelado"
+        ];
+
+        function formatarPreco(valor) {
+            return Number(valor).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL"
+            });
+        }
+
+        function criarElemento(tag, texto, classe = "") {
+            const elemento = document.createElement(tag);
+            elemento.textContent = texto;
+
+            if (classe) {
+                elemento.className = classe;
+            }
+
+            return elemento;
+        }
+
+        function montarPedido(pedido) {
+            const card = document.createElement("article");
+            card.className = "pedido-card";
+
+            card.appendChild(
+                criarElemento("h2", `Pedido #${pedido.id} - Mesa ${pedido.mesa}`)
+            );
+
+            card.appendChild(
+                criarElemento("p", `Cliente: ${pedido.cliente}`)
+            );
+
+            if (pedido.telefone) {
+                card.appendChild(
+                    criarElemento("p", `Telefone: ${pedido.telefone}`)
+                );
+            }
+
+            const data = new Date(pedido.criado_em);
+
+            card.appendChild(
+                criarElemento(
+                    "p",
+                    `Recebido em: ${data.toLocaleString("pt-BR")}`
+                )
+            );
+
+            card.appendChild(
+                criarElemento("h3", "Itens do pedido")
+            );
+
+            const itens = document.createElement("ul");
+
+            pedido.itens.forEach(item => {
+                const preco = formatarPreco(item.preco_unitario);
+
+                itens.appendChild(
+                    criarElemento(
+                        "li",
+                        `${item.quantidade}x ${item.produto} — ${preco} cada`
+                    )
+                );
+            });
+
+            card.appendChild(itens);
+
+            card.appendChild(
+                criarElemento(
+                    "p",
+                    `Total: ${formatarPreco(pedido.total)}`,
+                    "total-pedido"
+                )
+            );
+
+            card.appendChild(
+                criarElemento("p", `Status atual: ${pedido.status}`)
+            );
+
+            if (pedido.pagamento) {
+                card.appendChild(
+                    criarElemento(
+                        "p",
+                        `Pagamento: ${pedido.pagamento.metodo} — ${
+                            formatarPreco(pedido.pagamento.valor)
+                        }`
+                    )
+                );
+            } else {
+                card.appendChild(
+                    criarElemento("p", "Pagamento ainda não registrado.")
+                );
+            }
+
+            const controles = document.createElement("div");
+            controles.className = "controles-pedido";
+
+            const seletor = document.createElement("select");
+            seletor.setAttribute(
+                "aria-label",
+                `Novo status do pedido ${pedido.id}`
+            );
+
+            statusPermitidos.forEach(status => {
+                const opcao = document.createElement("option");
+                opcao.value = status;
+                opcao.textContent = status;
+                opcao.selected = status === pedido.status;
+                seletor.appendChild(opcao);
+            });
+
+            const botao = criarElemento("button", "Salvar status");
+            botao.type = "button";
+
+            botao.addEventListener("click", () => {
+                atualizarStatus(pedido.id, seletor.value, botao);
+            });
+
+            controles.append(seletor, botao);
+            card.appendChild(controles);
+
+            return card;
+        }
+
+        async function carregarPedidos() {
+            mensagem.textContent = "Carregando pedidos...";
+            listaPedidos.replaceChildren();
+
+            try {
+                const resposta = await fetch("/pedidos");
+                const pedidos = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        pedidos.erro || "Não foi possível carregar os pedidos."
+                    );
+                }
+
+                if (pedidos.length === 0) {
+                    mensagem.textContent = "Nenhum pedido recebido ainda.";
+                    return;
+                }
+
+                pedidos.forEach(pedido => {
+                    listaPedidos.appendChild(montarPedido(pedido));
+                });
+
+                mensagem.textContent =
+                    `Pedidos encontrados: ${pedidos.length}.`;
+
+            } catch (erro) {
+                mensagem.textContent =
+                    erro.message || "Erro ao carregar os pedidos.";
+            }
+        }
+
+        async function atualizarStatus(id, status, botao) {
+            botao.disabled = true;
+            botao.textContent = "Salvando...";
+
+            try {
+                const resposta = await fetch(`/pedidos/${id}/status`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ status: status })
+                });
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.erro || "Não foi possível atualizar o status."
+                    );
+                }
+
+                mensagem.textContent =
+                    `Status do pedido #${id} atualizado com sucesso!`;
+
+                await carregarPedidos();
+
+            } catch (erro) {
+                mensagem.textContent =
+                    erro.message || "Erro ao atualizar o status.";
+
+                botao.disabled = false;
+                botao.textContent = "Salvar status";
+            }
+        }
+
+        document
+            .getElementById("botao-atualizar")
+            .addEventListener("click", carregarPedidos);
+
+        carregarPedidos();
+    </script>
+</body>
+</html>
