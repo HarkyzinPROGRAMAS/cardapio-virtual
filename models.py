@@ -12,6 +12,13 @@ class Product(db.Model):
     preco = db.Column(db.Numeric(10, 2), nullable=False)
     disponivel = db.Column(db.Boolean, default=True)
 
+    categoria = db.Column(
+        db.String(50),
+        nullable=False,
+        default="Outros",
+        server_default="Outros"
+    )
+
 class Pedido(db.Model):
     __tablename__ = "pedidos"
 

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Café do Garotinho</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="topo">
+        <div class="marca">
+            <div class="icone-cafe">☕</div>
+            <h1>Café do Garotinho</h1>
+            <span>QUALIDADE • SABOR • SEMPRE</span>
+        </div>
+
+        <div class="slogan">
+            <p>Aqui o café tem mais sabor...</p>
+            <p>e a resenha também!</p>
+        </div>
+
+        <div class="destaque">
+            <p>CAFÉ FORTE,</p>
+            <p>COMIDA BOA,</p>
+            <p>E MUITA ENERGIA!</p>
+            <span>☕</span>
+        </div>
+
+        <a href="/login" class="acesso-equipe">
+            Área da equipe
+        </a>
+    </header>
+
+    <main>
+        
+    <section class="cardapio">
+
+    {% for categoria, produtos_categoria in produtos|groupby('categoria') %}
+
+        <article class="categoria">
+
+            {% if categoria == "Cafe" %}
+                <h2>☕ CAFÉS</h2>
+            {% else %}
+                <h2>{{ categoria|upper }}</h2>
+            {% endif %}
+
+            <div class="itens">
+
+                {% for produto in produtos_categoria %}
+
+                    <div class="item">
+                        <span>{{ produto.nome }}</span>
+
+                        <b>
+                            R$ {{ "%.2f"|format(produto.preco|float) }}
+                        </b>
+
+                        {% if produto.disponivel %}
+                            <button
+                            data-id="{{ produto.id }}"
+                            data-nome="{{ produto.nome }}"
+                            data-preco="{{ produto.preco }}"
+                            aria-label="Adicionar {{ produto.nome }}"
+                        >+</button>
+                        {% else %}
+                            <span class="indisponivel">
+                                Indisponível
+                            </span>
+                        {% endif %}
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </article>
+
+    {% else %}
+        <p>Nenhum produto cadastrado no momento.</p>
+    {% endfor %}
+
+    </section>
+
+
+        <section class="carrinho">
+            <h2>🛒 Seu pedido</h2>
+            <p id="vazio">Você ainda não adicionou nenhum item.</p>
+            <ul id="lista-carrinho"></ul>
+            <div class="total">
+                <span>Total</span>
+                <strong id="total">R$ 0,00</strong>
+            </div>
+                        <button id="limpar" class="botao-limpar">Limpar pedido</button>
+
+            <div class="dados-pedido">
+                <h3>Finalizar pedido</h3>
+
+                <form id="form-finalizar-pedido">
+                    <label for="nome-cliente">Nome do cliente</label>
+                    <input
+                        type="text"
+                        id="nome-cliente"
+                        placeholder="Digite seu nome"
+                        required
+                    >
+
+                    <label for="numero-mesa">Número da mesa</label>
+                    <input
+                        type="number"
+                        id="numero-mesa"
+                        min="1"
+                        placeholder="Ex.: 3"
+                        value="{{ request.args.get('mesa', '') }}"
+                        required
+                    >
+
+                    <label for="telefone-cliente">Telefone (opcional)</label>
+                    <input
+                        type="tel"
+                        id="telefone-cliente"
+                        placeholder="Digite seu telefone"
+                    >
+
+                    <button type="submit">Finalizar pedido</button>
+                </form>
+
+                <p id="mensagem-pedido" role="status"></p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>☕ Café do Garotinho ☕</p>
+        <span>QUALIDADE • SABOR • SEMPRE</span>
+        <p class="rodape-final">Feito com café e uma boa resenha!</p>
+    </footer>
+
+    <script>
+    const carrinho = [];
+
+    const lista = document.getElementById("lista-carrinho");
+    const totalElemento = document.getElementById("total");
+    const mensagemVazia = document.getElementById("vazio");
+
+    function formatarPreco(valor) {
+        return valor.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL"
+        });
+    }
+
+    function atualizarCarrinho() {
+        lista.replaceChildren();
+
+        let total = 0;
+
+        carrinho.forEach((item, indice) => {
+            const subtotal = item.preco * item.quantidade;
+            total += subtotal;
+
+            const linha = document.createElement("li");
+            const nome = document.createElement("span");
+            const preco = document.createElement("span");
+            const diminuir = document.createElement("button");
+            const quantidade = document.createElement("span");
+            const aumentar = document.createElement("button");
+            const remover = document.createElement("button");
+
+            nome.textContent = item.nome;
+            preco.textContent = formatarPreco(subtotal);
+
+            diminuir.textContent = "-";
+            quantidade.textContent = item.quantidade;
+            aumentar.textContent = "+";
+            remover.textContent = "×";
+
+            diminuir.disabled = item.quantidade === 1;
+
+            diminuir.setAttribute("aria-label", "Diminuir quantidade");
+            aumentar.setAttribute("aria-label", "Aumentar quantidade");
+            remover.setAttribute("aria-label", "Remover " + item.nome);
+
+            diminuir.addEventListener("click", () => {
+            if (item.quantidade > 1) {
+                item.quantidade--;
+                atualizarCarrinho();
+            }
+        });
+
+            aumentar.addEventListener("click", () => {
+                item.quantidade++;
+                atualizarCarrinho();
+            });
+
+            remover.addEventListener("click", () => {
+                carrinho.splice(indice, 1);
+                atualizarCarrinho();
+            });
+
+            linha.append(
+                nome,
+                diminuir,
+                quantidade,
+                aumentar,
+                preco,
+                remover
+            );
+
+            lista.appendChild(linha);
+        });
+
+        totalElemento.textContent = formatarPreco(total);
+        mensagemVazia.hidden = carrinho.length > 0;
+    }
+
+    document.querySelectorAll("[data-nome]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            const id = Number(botao.dataset.id);
+
+            const produtoExistente = carrinho.find(
+                item => item.id === id
+            );
+
+            if (produtoExistente) {
+                produtoExistente.quantidade++;
+            } else {
+                carrinho.push({
+                    id: id,
+                    nome: botao.dataset.nome,
+                    preco: Number(botao.dataset.preco),
+                    quantidade: 1
+                });
+            }
+
+            atualizarCarrinho();
+        });
+    });
+
+    document.getElementById("limpar").addEventListener("click", () => {
+        carrinho.length = 0;
+        atualizarCarrinho();
+    });
+
+    const formularioPedido = document.getElementById("form-finalizar-pedido");
+const mensagemPedido = document.getElementById("mensagem-pedido");
+
+formularioPedido.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    if (carrinho.length === 0) {
+        mensagemPedido.textContent = "Adicione pelo menos um item ao pedido.";
+        return;
+    }
+
+    const dados = {
+        numero_mesa: Number(document.getElementById("numero-mesa").value),
+        nome_cliente: document.getElementById("nome-cliente").value.trim(),
+        telefone_cliente: document.getElementById("telefone-cliente").value.trim(),
+        itens: carrinho.map(item => ({
+            produto_id: item.id,
+            quantidade: item.quantidade
+        }))
+    };
+
+    try {
+        const resposta = await fetch("/pedidos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(dados)
+        });
+
+        const resultado = await resposta.json();
+
+        if (!resposta.ok) {
+            mensagemPedido.textContent =
+                resultado.erro || resultado.mensagem || "Não foi possível enviar o pedido.";
+            return;
+        }
+
+        mensagemPedido.textContent =
+            `Pedido #${resultado.pedido.id} enviado com sucesso! Total: ${
+                formatarPreco(Number(resultado.pedido.total))
+            }`;
+
+        carrinho.length = 0;
+        atualizarCarrinho();
+        formularioPedido.reset();
+
+    } catch (erro) {
+        mensagemPedido.textContent =
+            "Erro de conexão. Confira se o servidor está funcionando.";
+    }
+});
+
+    atualizarCarrinho();
+    </script>
+
+</body>
+</html>

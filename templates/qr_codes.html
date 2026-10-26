@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>QR Codes - Café do Garotinho</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5eee7;
+            color: #38271e;
+            margin: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .acoes {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .acoes a,
+        .acoes button {
+            padding: 10px 16px;
+            background: #68432f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .grade-qr {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            max-width: 850px;
+            margin: auto;
+        }
+
+        .mesa-qr {
+            background: white;
+            border: 1px solid #d8c8bb;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            break-inside: avoid;
+        }
+
+        .mesa-qr img {
+            width: 180px;
+            height: 180px;
+            max-width: 100%;
+        }
+
+        .mesa-qr p {
+            overflow-wrap: anywhere;
+            font-size: 12px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                margin: 0;
+            }
+
+            header p {
+                display: none;
+            }
+
+            .acoes {
+                display: none;
+            }
+
+            .grade-qr {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .mesa-qr {
+                border: 1px solid #999;
+                border-radius: 0;
+                padding: 10px;
+            }
+
+            .mesa-qr img {
+                width: 150px;
+                height: 150px;
+            }
+
+            .mesa-qr p {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>☕ QR Codes das mesas</h1>
+        <p>Escaneie o código para acessar o cardápio da mesa correspondente.</p>
+    </header>
+
+    <div class="acoes">
+        <a href="/painel-pedidos">Voltar ao painel</a>
+        <button type="button" onclick="window.print()">
+            Imprimir QR Codes
+        </button>
+    </div>
+
+    <main class="grade-qr">
+        {% for mesa in mesas %}
+            <article class="mesa-qr">
+                <h2>Mesa {{ mesa.numero }}</h2>
+
+                <img
+                    src="data:image/png;base64,{{ mesa.imagem }}"
+                    alt="QR Code da mesa {{ mesa.numero }}"
+                >
+
+                <p>Escaneie para fazer seu pedido.</p>
+            </article>
+        {% endfor %}
+    </main>
+</body>
+</html>
