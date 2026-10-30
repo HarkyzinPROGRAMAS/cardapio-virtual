@@ -6,14 +6,8 @@ from repositories.pedido_repository import (
     criar_pedido as salvar_pedido,
     buscar_pedido_por_id,
     atualizar_status as salvar_status,
-    registrar_pagamento as salvar_pagamento
-)
-
-
-from repositories.pedido_repository import (
-    listar_pedidos as buscar_pedidos,
-    buscar_produto_por_id,
-    criar_pedido as salvar_pedido
+    registrar_pagamento as salvar_pagamento,
+    arquivar_pedido as salvar_arquivamento
 )
 
 
@@ -139,6 +133,20 @@ def atualizar_status_pedido(pedido_id, novo_status):
     if not pedido:
         return None, "Pedido não encontrado.", 404
 
+    if pedido.arquivado:
+        return None, "Este pedido já foi retirado do painel.", 400
+
+    transicoes_permitidas = {
+        "Pendente": ["Em preparo", "Cancelado"],
+        "Em preparo": ["Pronto", "Cancelado"],
+        "Pronto": ["Finalizado"],
+        "Finalizado": [],
+        "Cancelado": [],
+    }
+
+    if novo_status not in transicoes_permitidas[pedido.status]:
+        return None, "Não é permitido realizar essa mudança de status.", 400
+
     pedido = salvar_status(pedido, novo_status)
 
     return pedido, None, 200
@@ -155,9 +163,35 @@ def registrar_pagamento(pedido_id, metodo):
     if not pedido:
         return None, "Pedido não encontrado.", 404
 
+    if pedido.arquivado:
+        return None, "Este pedido já foi retirado do painel.", 400
+
+    if pedido.status == "Cancelado":
+        return None, "Não é possível registrar pagamento para um pedido cancelado.", 400
+
     if pedido.pagamento:
         return None, "Este pedido já possui um pagamento registrado.", 400
 
     pagamento = salvar_pagamento(pedido, metodo)
 
     return pagamento, None, 201
+
+
+def arquivar_pedido(pedido_id):
+    pedido = buscar_pedido_por_id(pedido_id)
+
+    if not pedido:
+        return None, "Pedido não encontrado.", 404
+
+    if pedido.arquivado:
+        return None, "Este pedido já foi retirado do painel.", 400
+
+    if pedido.status != "Finalizado":
+        return None, "Somente pedidos finalizados podem ser arquivados.", 400
+
+    if not pedido.pagamento:
+        return None, "O pagamento precisa estar registrado para arquivar o pedido.", 400
+
+    pedido = salvar_arquivamento(pedido)
+
+    return pedido, None, 200

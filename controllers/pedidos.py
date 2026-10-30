@@ -8,7 +8,8 @@ from services.pedido_service import (
     listar_pedidos as buscar_pedidos,
     criar_pedido as criar_pedido_service,
     atualizar_status_pedido as atualizar_status_service,
-    registrar_pagamento as registrar_pagamento_service
+    registrar_pagamento as registrar_pagamento_service,
+    arquivar_pedido as arquivar_pedido_service
 )
 
 from auth import equipe_required
@@ -128,5 +129,26 @@ def registrar_pagamento_controller(pedido_id):
             "metodo": pagamento.metodo,
             "valor": str(pagamento.valor),
             "pago_em": pagamento.pago_em.isoformat(),
+        }
+    }), status_http
+
+
+@pedidos_bp.route(
+    "/pedidos/<int:pedido_id>/arquivar",
+    methods=["PATCH"]
+)
+@equipe_required
+def arquivar_pedido_controller(pedido_id):
+    pedido, erro, status_http = arquivar_pedido_service(pedido_id)
+
+    if erro:
+        return jsonify({"erro": erro}), status_http
+
+    return jsonify({
+        "mensagem": "Pedido retirado do painel com sucesso.",
+        "pedido": {
+            "id": pedido.id,
+            "status": pedido.status,
+            "arquivado": pedido.arquivado
         }
     }), status_http

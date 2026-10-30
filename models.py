@@ -30,12 +30,18 @@ class Pedido(db.Model):
 
     status = db.Column(db.String(30), default="Pendente")
 
+    arquivado = db.Column(
+    db.Boolean,
+    nullable=False,
+    default=False,
+    server_default=db.false()
+    )
+
     total = db.Column(db.Numeric(10, 2), default=0)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     itens = db.relationship("ItemPedido", backref="pedido", lazy=True)
     pagamento = db.relationship("Pagamento",backref="pedido",uselist=False)
-
 
 class ItemPedido(db.Model):
     __tablename__ = "itens_pedido"

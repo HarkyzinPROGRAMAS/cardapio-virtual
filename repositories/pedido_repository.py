@@ -1,8 +1,11 @@
 import models
 from configdb import db
 
-def listar_pedidos(status=""):
+def listar_pedidos(status="", incluir_arquivados=False):
     consulta = models.Pedido.query
+
+    if not incluir_arquivados:
+        consulta = consulta.filter_by(arquivado=False)
 
     if status:
         consulta = consulta.filter_by(status=status)
@@ -80,3 +83,10 @@ def registrar_pagamento(pedido, metodo):
     db.session.commit()
 
     return pagamento
+
+def arquivar_pedido(pedido):
+    pedido.arquivado = True
+
+    db.session.commit()
+
+    return pedido

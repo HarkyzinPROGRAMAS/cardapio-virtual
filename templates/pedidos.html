@@ -219,9 +219,9 @@
                 card.appendChild(
                     criarElemento(
                         "p",
-                        `Pagamento: ${pedido.pagamento.metodo} — ${
+                        `Pagamento concluído: ${pedido.pagamento.metodo} — ${
                             formatarPreco(pedido.pagamento.valor)
-                        }`
+                    }`
                     )
                 );
             
@@ -284,6 +284,10 @@
                 card.appendChild(controlesPagamento);
             }
 
+            if (
+            pedido.status !== "Finalizado" &&
+            pedido.status !== "Cancelado"
+            ) {
             const controles = document.createElement("div");
             controles.className = "controles-pedido";
 
@@ -295,9 +299,11 @@
 
             statusPermitidos.forEach(status => {
                 const opcao = document.createElement("option");
+
                 opcao.value = status;
                 opcao.textContent = status;
                 opcao.selected = status === pedido.status;
+
                 seletor.appendChild(opcao);
             });
 
@@ -310,6 +316,30 @@
 
             controles.append(seletor, botao);
             card.appendChild(controles);
+            }
+
+            if (
+                pedido.status === "Finalizado" &&
+                pedido.pagamento
+            ) {
+                const controlesArquivamento = document.createElement("div");
+                controlesArquivamento.className = "controles-pedido";
+
+                const botaoArquivar = criarElemento(
+                    "button",
+                    "Retirar do painel",
+                    "botao-atualizar"
+                );
+
+                botaoArquivar.type = "button";
+
+                botaoArquivar.addEventListener("click", () => {
+                    arquivarPedido(pedido.id, botaoArquivar);
+                });
+
+                controlesArquivamento.appendChild(botaoArquivar);
+                card.appendChild(controlesArquivamento);
+            }
 
             return card;
         }
@@ -391,6 +421,46 @@
         }
 
 
+        async function arquivarPedido(id, botao) {
+            const confirmar = window.confirm(
+                `Deseja retirar o pedido #${id} do painel? Ele continuará salvo no histórico.`
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            botao.disabled = true;
+            botao.textContent = "Retirando...";
+
+            try {
+                const resposta = await fetch(`/pedidos/${id}/arquivar`, {
+                    method: "PATCH"
+                });
+
+                const resultado = await resposta.json();
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        resultado.erro || "Não foi possível arquivar o pedido."
+                    );
+                }
+
+                await carregarPedidos();
+
+                mensagem.textContent =
+                    `Pedido #${id} retirado do painel com sucesso!`;
+
+            } catch (erro) {
+                mensagem.textContent =
+                    erro.message || "Erro ao arquivar o pedido.";
+
+                botao.disabled = false;
+                botao.textContent = "Retirar do painel";
+            }
+        }
+
+
         async function atualizarStatus(id, status, botao) {
             botao.disabled = true;
             botao.textContent = "Salvando...";
@@ -462,6 +532,5 @@
 
         setInterval(carregarPedidos, 30000);
 </script>
-    </script>
 </body>
 </html>

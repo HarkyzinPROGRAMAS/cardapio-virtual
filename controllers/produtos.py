@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from auth import admin_required
 
 from services.produto_service import (
     listar_produtos,
@@ -18,12 +19,14 @@ def listar_produtos_controller():
             "nome": produto.nome,
             "preco": str(produto.preco),
             "disponivel": produto.disponivel,
+            "categoria": produto.categoria,
         }
         for produto in produtos
     ])
 
 
 @produtos_bp.route("/produtos", methods=["POST"])
+@admin_required
 def criar_produto_controller():
     dados = request.get_json(silent=True) or {}
 
