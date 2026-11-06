@@ -128,7 +128,7 @@ def registrar_pagamento_controller(pedido_id):
             "pedido_id": pagamento.pedido_id,
             "metodo": pagamento.metodo,
             "valor": str(pagamento.valor),
-            "pago_em": pagamento.pago_em.isoformat(),
+            "pago_em": pagamento.pago_em.isoformat() + "Z",
         }
     }), status_http
 

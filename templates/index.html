@@ -111,8 +111,11 @@
                         type="number"
                         id="numero-mesa"
                         min="1"
+                        max="10"
+                        step="1"
                         placeholder="Ex.: 3"
                         value="{{ request.args.get('mesa', '') }}"
+                        {% if request.args.get('mesa') %}readonly{% endif %}
                         required
                     >
 
@@ -120,7 +123,9 @@
                     <input
                         type="tel"
                         id="telefone-cliente"
-                        placeholder="Digite seu telefone"
+                        inputmode="numeric"
+                        maxlength="15"
+                        placeholder="(83) 99999-9999"
                     >
 
                     <button type="submit">Finalizar pedido</button>
@@ -244,59 +249,76 @@
     });
 
     const formularioPedido = document.getElementById("form-finalizar-pedido");
-const mensagemPedido = document.getElementById("mensagem-pedido");
+    const mensagemPedido = document.getElementById("mensagem-pedido");
+    const campoTelefone = document.getElementById("telefone-cliente");
 
-formularioPedido.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
+    campoTelefone.addEventListener("input", () => {
+        let numeros = campoTelefone.value.replace(/\D/g, "");
 
-    if (carrinho.length === 0) {
-        mensagemPedido.textContent = "Adicione pelo menos um item ao pedido.";
-        return;
-    }
+        numeros = numeros.slice(0, 11);
 
-    const dados = {
-        numero_mesa: Number(document.getElementById("numero-mesa").value),
-        nome_cliente: document.getElementById("nome-cliente").value.trim(),
-        telefone_cliente: document.getElementById("telefone-cliente").value.trim(),
-        itens: carrinho.map(item => ({
-            produto_id: item.id,
-            quantidade: item.quantidade
-        }))
-    };
+        if (numeros.length > 7) {
+            campoTelefone.value =
+                `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
+        } else if (numeros.length > 2) {
+            campoTelefone.value =
+                `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+        } else if (numeros.length > 0) {
+            campoTelefone.value = `(${numeros}`;
+        }
+    });
 
-    try {
-        const resposta = await fetch("/pedidos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(dados)
-        });
+    formularioPedido.addEventListener("submit", async (evento) => {
+        evento.preventDefault();
 
-        const resultado = await resposta.json();
-
-        if (!resposta.ok) {
-            mensagemPedido.textContent =
-                resultado.erro || resultado.mensagem || "Não foi possível enviar o pedido.";
+        if (carrinho.length === 0) {
+            mensagemPedido.textContent = "Adicione pelo menos um item ao pedido.";
             return;
         }
 
-        mensagemPedido.textContent =
-            `Pedido #${resultado.pedido.id} enviado com sucesso! Total: ${
-                formatarPreco(Number(resultado.pedido.total))
-            }`;
+        const dados = {
+            numero_mesa: Number(document.getElementById("numero-mesa").value),
+            nome_cliente: document.getElementById("nome-cliente").value.trim(),
+            telefone_cliente: document.getElementById("telefone-cliente").value.trim(),
+            itens: carrinho.map(item => ({
+                produto_id: item.id,
+                quantidade: item.quantidade
+            }))
+        };
 
-        carrinho.length = 0;
+        try {
+            const resposta = await fetch("/pedidos", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(dados)
+            });
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                mensagemPedido.textContent =
+                    resultado.erro || resultado.mensagem || "Não foi possível enviar o pedido.";
+                return;
+            }
+
+            mensagemPedido.textContent =
+                `Pedido #${resultado.pedido.id} enviado com sucesso! Total: ${
+                    formatarPreco(Number(resultado.pedido.total))
+                }`;
+
+            carrinho.length = 0;
+            atualizarCarrinho();
+            formularioPedido.reset();
+
+        } catch (erro) {
+            mensagemPedido.textContent =
+                "Erro de conexão. Confira se o servidor está funcionando.";
+        }
+    });
+
         atualizarCarrinho();
-        formularioPedido.reset();
-
-    } catch (erro) {
-        mensagemPedido.textContent =
-            "Erro de conexão. Confira se o servidor está funcionando.";
-    }
-});
-
-    atualizarCarrinho();
     </script>
 
 </body>

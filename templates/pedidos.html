@@ -319,8 +319,8 @@
             }
 
             if (
-                pedido.status === "Finalizado" &&
-                pedido.pagamento
+                pedido.status === "Cancelado" ||
+                (pedido.status === "Finalizado" && pedido.pagamento)
             ) {
                 const controlesArquivamento = document.createElement("div");
                 controlesArquivamento.className = "controles-pedido";

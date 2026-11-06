@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from repositories.pedido_repository import (
@@ -32,7 +33,7 @@ def listar_pedidos(status=""):
             pagamento = {
                 "metodo": pedido.pagamento.metodo,
                 "valor": str(pedido.pagamento.valor),
-                "pago_em": pedido.pagamento.pago_em.isoformat(),
+                "pago_em": pedido.pagamento.pago_em.isoformat() + "Z",
             }
 
         resultado.append({
@@ -42,7 +43,7 @@ def listar_pedidos(status=""):
             "telefone": pedido.telefone_cliente,
             "status": pedido.status,
             "total": str(pedido.total),
-            "criado_em": pedido.criado_em.isoformat(),
+            "criado_em": pedido.criado_em.isoformat() + "Z",
             "itens": itens,
             "pagamento": pagamento,
         })
@@ -51,8 +52,17 @@ def listar_pedidos(status=""):
 
 
 def criar_pedido(dados):
+    valor_mesa = dados.get("numero_mesa")
+
     try:
-        numero_mesa = int(dados.get("numero_mesa"))
+        if isinstance(valor_mesa, bool):
+            raise ValueError
+
+        numero_mesa = int(valor_mesa)
+
+        if isinstance(valor_mesa, float) and not valor_mesa.is_integer():
+            raise ValueError
+
     except (TypeError, ValueError):
         return None, "Informe um número de mesa válido.", 400
 
@@ -60,14 +70,34 @@ def criar_pedido(dados):
         dados.get("nome_cliente", "")
     ).strip()
 
-    telefone_cliente = str(
-        dados.get("telefone_cliente", "")
-    ).strip() or None
+    telefone_recebido = str(
+        dados.get("telefone_cliente") or ""
+    ).strip()
+
+    if telefone_recebido:
+        if not re.fullmatch(r"[0-9() -]+", telefone_recebido):
+            return None, "Telefone inválido.", 400
+
+        telefone_cliente = re.sub(
+            r"[() -]",
+            "",
+            telefone_recebido
+        )
+
+        if (
+            len(telefone_cliente) != 11
+            or not telefone_cliente.isdigit()
+            or telefone_cliente[2] != "9"
+        ):
+            return None, "Informe um celular válido no formato (DDD) 9XXXX-XXXX.", 400
+
+    else:
+        telefone_cliente = None
 
     itens_recebidos = dados.get("itens", [])
 
-    if numero_mesa <= 0:
-        return None, "O número da mesa deve ser maior que zero.", 400
+    if numero_mesa < 1 or numero_mesa > 10:
+        return None, "O número da mesa deve estar entre 1 e 10.", 400
 
     if not nome_cliente:
         return None, "Informe o nome do cliente.", 400
@@ -186,10 +216,10 @@ def arquivar_pedido(pedido_id):
     if pedido.arquivado:
         return None, "Este pedido já foi retirado do painel.", 400
 
-    if pedido.status != "Finalizado":
-        return None, "Somente pedidos finalizados podem ser arquivados.", 400
+    if pedido.status not in ["Finalizado", "Cancelado"]:
+        return None, "Somente pedidos finalizados ou cancelados podem ser arquivados.", 400
 
-    if not pedido.pagamento:
+    if pedido.status == "Finalizado" and not pedido.pagamento:
         return None, "O pagamento precisa estar registrado para arquivar o pedido.", 400
 
     pedido = salvar_arquivamento(pedido)
